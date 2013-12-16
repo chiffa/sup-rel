@@ -1,16 +1,16 @@
 '''
 Created on Dec 15, 2013
-
 @author: ank
-
-performs config-dependent IO
+performs configfiles reading and writing
 '''
 
 import configparser
 import os
 
-configsfiles=['../configs/servers.ini','../configs/options.ini']
-   
+rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../configs/'))
+shortnames=['servers','options']
+configsfiles=[rootdir+'/'+name+'.ini' for name in shortnames ]
+
 def generate_configs():
     '''
     Generates the configFiles. Executed only on call of module as if it was main
@@ -44,14 +44,22 @@ def generate_configs():
     generate_servers_config()
 
 def parse_configs():
-    cfg1=configparser.ConfigParser()
-    cfg1.read(configsfiles[0])
-    cfg2=configparser.ConfigParser()
-    cfg2.read(configsfiles[1])
-    return cfg1, cfg2
+    ''' parses all the relevant configs '''
+
+    def improved_read(path):
+        '''
+        Parses a config file on given path, in case of failure raises an IOError, 
+        '''
+        cfg=configparser.ConfigParser()
+        rfs=cfg.read(path)
+        if rfs==[]:
+            raise IOError('cannot load '+path)
+        return cfg
+    
+    return improved_read(configsfiles[0]), improved_read(configsfiles[1])
 
 
 if __name__ == "__main__":
-    if not os.path.exists('../configs'):
-        os.makedirs('../configs')
+    if not os.path.exists(rootdir):
+        os.makedirs(rootdir)
     generate_configs()
