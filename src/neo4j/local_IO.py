@@ -29,7 +29,7 @@ class schemeObject():
     Loads from a configFile
     '''
 
-class Container(object):
+class Buffer_Container(object):
     ''' Buffering class to avoid unneccesary IO with the noe4j database'''
     
     def __init__(self,schemeObject):
@@ -40,12 +40,12 @@ class Container(object):
 class Connector(object):
     ''' Connects and configures a local neo4j instance and a Container object'''
     
-    def __init__(self, local_server_path=cfg1['TEST']["local_neo4j"]):
+    def __init__(self, local_server_path=cfg1['TEST']["local_neo4j"],schemeObject):
         '''
         neo is a true neo4j database.
         '''
         self.neo=GraphDatabase(local_server_path)
-        self.Container={}
+        self.Buffer=Buffer_Container(schemeObject)
 
     def load_from_scheme(self,schemeObject):
         pass

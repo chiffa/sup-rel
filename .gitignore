@@ -34,3 +34,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# All the config Files that contain private information
+*_private.ini
+
+# For the moment all the config Files
+*.ini
