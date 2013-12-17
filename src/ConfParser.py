@@ -4,7 +4,12 @@ Created on Dec 15, 2013
 performs configfiles reading and writing
 '''
 
-import configparser
+# Python 2.7 specific imports here
+from __future__ import print_function
+try:
+    import configparser
+except:
+    import CostumConfigParser as configparser
 import os
 
 rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../configs/'))

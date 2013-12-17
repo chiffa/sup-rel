@@ -29,12 +29,14 @@ def generate_scheme():
     scheme["NODE"]={"_class_type":"_Node",
                      "_class_name":"Node",
                      "_inherits_from":"BaseClass",
-                     "Instance_Display_Name":"@self.Instance_ID", # could we use some logic around here like @self.Name + @self.Pointer ?
-                     "Instance_ID":"_String" 
+                     "Instance_Display_Name":"@self.type+@self._instance_ID", # could we use some logic around here like @self.Name + @self.Pointer ?
+                     "_instance_ID":"_String" # automatically sinced with the neo4j database to allow all the manipulations by the node IDs
                     }   
     scheme["RELATION"]={"class_type":"_Relation",
                      "_class_name":"Relation",
-                     "_inherits_from":"BaseClass", 
+                     "_inherits_from":"BaseClass",
+                     "Instance_Display_Name":"@self.type+@self._instance_ID", # could we use some logic around here like @self.Name + @self.Pointer ?
+                     "_instance_ID":"_String" # automatically sinced with the neo4j database to allow all the manipulations by the node IDs
                         }
     with open(configsfiles[0],'w') as configfile:
         scheme.write(configfile)

@@ -9,7 +9,6 @@ class SchemeGenerator(object):
     Used to build a neo4j object
     '''
 
-
     def __init__(self, params=[]):
         '''
         Constructor
