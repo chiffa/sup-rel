@@ -6,10 +6,7 @@ performs configfiles reading and writing
 
 # Python 2.7 specific imports here
 from __future__ import print_function
-try:
-    import configparser
-except:
-    import CostumConfigParser as configparser
+import ConfigParser
 import os
 
 rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../configs/'))
@@ -25,11 +22,13 @@ def generate_configs():
         '''
         Generates configuration files for the different execution types
         '''
-        config = configparser.ConfigParser()
-        config["DEFAULT"] = {"servers_are_local":"True",
-                              "server_neo4j":"http://localhost:7474"}  
-        config["TEST"]={"local_neo4j":"/Users/ank/Programming/DBs/neo4j"}
-        config["PRODUCTION"]={"local_neo4j":"/usr/local/Cellar/neo4j/1.9.5/libexec/data"}   
+        config = ConfigParser.SafeConfigParser()
+        config.set('DEFAULT', "servers_are_local", "True")
+        config.set('DEFAULT', "server_neo4j","http://localhost:7474")
+        config.add_section('TEST')
+        config.set('TEST', "local_neo4j","/Users/ank/Programming/DBs/neo4j")
+        config.add_section('PRODUCTION')
+        config.set('PRODUCTION', "local_neo4j","/usr/local/Cellar/neo4j/1.9.5/libexec/data")
         with open(configsfiles[0],'w') as configfile:
             config.write(configfile)
     
@@ -37,11 +36,14 @@ def generate_configs():
         '''
         Generates configurations files for different runtime options
         '''
-        config = configparser.ConfigParser()
-        config["JVM"] = {"NEO4J_PYTHON_JVMARGS": "-Xms128M -Xmx512M" ,
-                         "JAVA_HOME": "/usr/lib/jvm/java" }
-        config["LOGGER"] = {"level":"DEBUG",
-                            "output_file":"/Users/ank/Programming/logs/production_neo4j_logger.txt"}
+        config = ConfigParser.SafeConfigParser()
+        config.add_section('JVM')
+        config.set('JVM',"NEO4J_PYTHON_JVMARGS", "-Xms128M -Xmx512M")
+        config.set('JVM',"JAVA_HOME", "/usr/lib/jvm/java")
+        config.add_section('LOGGER')
+        config.set('LOGGER',"level","DEBUG")
+        config.set('LOGGER',"output_file","/Users/ank/Programming/logs/production_neo4j_logger.txt")
+        
         with open(configsfiles[1],'w') as configfile:
             config.write(configfile)
     
@@ -55,7 +57,7 @@ def parse_configs():
         '''
         Parses a config file on given path, in case of failure raises an IOError, 
         '''
-        cfg=configparser.ConfigParser()
+        cfg=ConfigParser.SafeConfigParser()
         rfs=cfg.read(path)
         if rfs==[]:
             raise IOError('cannot load '+path)
@@ -68,3 +70,4 @@ if __name__ == "__main__":
     if not os.path.exists(rootdir):
         os.makedirs(rootdir)
     generate_configs()
+    parse_configs()

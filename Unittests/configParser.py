@@ -4,7 +4,7 @@ Created on Dec 15, 2013
 Checks if all the relevant information is in the ConfigParser-defined files
 '''
 import unittest
-import src.ConfigParser as cfgPrs
+import src.ConfParser as cfgPrs
 import os
 
 class ConfigsParser_TestSuite(unittest.TestCase):
@@ -13,8 +13,8 @@ class ConfigsParser_TestSuite(unittest.TestCase):
     def pprint(confparserobj):
         for sec in confparserobj.sections():
             print(sec)
-            for key in confparserobj[sec]:
-                print('\t'+str(key)+'\t:\t'+str(confparserobj[sec][key]))
+            for key in confparserobj.options(sec):
+                print('\t'+str(key)+'\t:\t'+str(confparserobj.get(sec,key)))
 
     def test_Configs_Parser(self):
         print('Testing the contents of the config .ini files')
