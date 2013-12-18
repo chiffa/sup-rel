@@ -4,7 +4,10 @@ Created on Dec 16, 2013
 A class specifically designed for communication with the 
 '''
 
-import configparser
+try:
+    import configparser
+except:
+    import CostumConfigParser as configparser
 import os
 
 rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../schemes/'))
