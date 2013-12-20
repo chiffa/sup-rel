@@ -4,11 +4,10 @@ Created on Dec 16, 2013
 A class specifically designed for communication with the 
 '''
 
-try:
-    import configparser
-except:
-    import CostumConfigParser as configparser
+from __future__ import print_function
+import ConfigParser
 import os
+from pprint import PrettyPrinter
 
 rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../schemes/'))
 shortnames=['MainScheme']
@@ -21,48 +20,53 @@ allowed_class_types=["_Index","_Node","_Relation"]
 def generate_scheme():
     '''
     '''
-    scheme = configparser.ConfigParser()
-    scheme["DEFAULT"] = {"_class_type":ErrorString,
-                         "_class_name":ErrorString,
-                         "_inherits_from":ErrorString}      # Is used to infer type. In case of classType is default, inferred classtype is used, otherwise a warning is issued
-    scheme["INDEX"]={"_class_type":"_Index",
-                     "_class_name":"Index",
-                     "_inherits_from":"BaseClass", 
-                     }
-    scheme["NODE"]={"_class_type":"_Node",
-                     "_class_name":"Node",
-                     "_inherits_from":"BaseClass",
-                     "Instance_Display_Name":"@self.type+@self._instance_ID", # could we use some logic around here like @self.Name + @self.Pointer ?
-                     "_instance_ID":"_String" # automatically sinced with the neo4j database to allow all the manipulations by the node IDs
-                    }   
-    scheme["RELATION"]={"class_type":"_Relation",
-                     "_class_name":"Relation",
-                     "_inherits_from":"BaseClass",
-                     "Instance_Display_Name":"@self.type+@self._instance_ID", # could we use some logic around here like @self.Name + @self.Pointer ?
-                     "_instance_ID":"_String" # automatically sinced with the neo4j database to allow all the manipulations by the node IDs
-                        }
+    scheme = ConfigParser.SafeConfigParser()
+    scheme.set('DEFAULT', "*_class_type", ErrorString)
+    scheme.set('DEFAULT', "*_class_name", ErrorString)
+    scheme.set('DEFAULT', "*_inherits_from", ErrorString)       # Is used to infer type. In case of classType is default, inferred classtype is used, otherwise a warning is issued
+    scheme.set('DEFAULT', "Instance_Display_Name_!", "@self.type+@self._instance_ID")
+    scheme.set('DEFAULT', "*_instance_ID_!", "*_String")       # Is used to infer type. In case of classType is default, inferred classtype is used, otherwise a warning is issued
+    scheme.add_section('NODE')
+    scheme.set('NODE', "*_class_type", 'Node')  #Can be ommited in the classes as long is inheritence is specified
+    scheme.set('NODE', "*_class_name", 'node')
+    scheme.set('NODE', "*_inherits_from", '@BaseClass')       # Is used to infer type. In case of classType is default, inferred classtype is used, otherwise a warning is issued    
+    scheme.add_section('RELATION')
+    scheme.set('RELATION', "*_class_type", 'Relation')  #Can be ommited in the classes as long is inheritence is specified
+    scheme.set('RELATION', "*_class_name", 'relation')
+    scheme.set('RELATION', "*_inherits_from", '@BaseClass')       # Is used to infer type. In case of classType is default, inferred classtype is used, otherwise a warning is issued    
     with open(configsfiles[0],'w') as configfile:
         scheme.write(configfile)
 
-def parse_scheme(schemeStorageObject):
+def parse_scheme(schemeStorageObject=""):
     ''' '''
 
     def improved_read(path):
         '''
         Will throw an IOError in case it can't read a file
         '''
-        cfg=configparser.ConfigParser()
+        cfg=ConfigParser.SafeConfigParser()
         rfs=cfg.read(path)
         if rfs==[]:
             raise IOError('cannot load '+path)
+        print(cfg.sections())
         return cfg
     
     def process():
+        scheme_ini=improved_read(configsfiles[0])
+        MainDict={}
+        for section in scheme_ini.sections():
+            section_name="_".join([elt.capitalize() for elt in section.split('_')])
+            MainDict[section_name]={}
+            for option in scheme_ini.options(section):
+                MainDict[section_name][option]=scheme_ini.get(section, option)
+        return MainDict
     
-        return improved_read(configsfiles[0]), improved_read(configsfiles[1])
+    return process()
 
 
 if __name__ == "__main__":
     if not os.path.exists(rootdir):
         os.makedirs(rootdir)
     generate_scheme()
+    pp=PrettyPrinter(indent=4)
+    pp.pprint(parse_scheme())
