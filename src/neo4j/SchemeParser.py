@@ -9,14 +9,15 @@ import ConfigParser
 import os
 from pprint import PrettyPrinter
 from itertools import compress
+import warnings
 # import string
 
 rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../schemes/'))
 shortnames=['MainScheme','NoteScheme']
 schemefiles=[rootdir+'/'+name+'.ini' for name in shortnames ]
 ErrorString="<broken inheritence!>"
-ComputationString="<computed>"
 # Additional levels of restriction, we'll leave them out for now
+baseclasses=['node', 'adjacency', 'relation']
 allowed_container_types=["_String","_Float","_Int"]
 allowed_class_types=["_Index","_Node","_Relation"]
 
@@ -25,7 +26,7 @@ def generate_scheme():
     '''
     '''
     scheme = ConfigParser.SafeConfigParser()
-    scheme.set('DEFAULT', "*_class_type", ComputationString)            #Can be ommited in the classes as long is inheritence is specified
+
     scheme.set('DEFAULT', "*_inherits_from", ErrorString)       # Is used to infer type. In case of classType is default, inferred classtype is used, otherwise a warning is issued
     scheme.set('DEFAULT', "Instance_Display_Name_!", "@self.class_name+@self._instance_ID")
     scheme.set('DEFAULT', "*_instance_ID_!", "*_String")
@@ -55,13 +56,22 @@ def parse_scheme(path_to_scheme,schemeStorageObject=""):
             raise IOError('cannot load '+path)
         MainDict={}
         for section in scheme_ini.sections():
-            section_name="_".join([elt.capitalize() for elt in section.split('_')])
+            section_name="_".join([elt.lower() for elt in section.split('_')])
             MainDict[section_name]={}
             for option in scheme_ini.options(section):
                 MainDict[section_name][option]=scheme_ini.get(section, option).lower()
         return MainDict
+
+    def invert_inheritence(arg_Inheritant2Inherited):
+        '''inverts the inheritence dictionary'''
+        Inerited2Inheritant={}
+        for key, value in arg_Inheritant2Inherited.iteritems():
+            if value not in Inerited2Inheritant.keys():
+                Inerited2Inheritant[value]=[]
+            Inerited2Inheritant[value].append(key)
+        return Inerited2Inheritant
     
-    def check_config(scheme_dict):        
+    def check_min_config(scheme_dict):        
         
         def strict_lvl2_flatten(dico):
             '''
@@ -71,71 +81,20 @@ def parse_scheme(path_to_scheme,schemeStorageObject=""):
             FlatDict={}
             for superkey in dico.keys():
                 for subkey in dico[superkey].keys():
-                    FlatDict[superkey.upper()+"/"+subkey.lower()]=dico[superkey][subkey]
+                    FlatDict[superkey+"/"+subkey]=dico[superkey][subkey]
             return FlatDict
         
         def ref_scheme_error_print(erred_Dict_List,flatenend_actual_dict):
             ''' prints beautifully the error pairs (as much as an error can be beautiful) '''
             returnString="\n\n"
-            for elt in errlist:
-                returnString+=elt[0]+ " = "+elt[1]+ " expected\n"
+            for elt in erred_Dict_List:
+                returnString+=elt[0].split('/')[0].upper()+ " = "+elt[1]+ " expected\n"
                 coelt=flatenend_actual_dict.get(elt[0])
                 try:
-                    returnString+=elt[0]+" = "+coelt+" found\n\n"
+                    returnString+=elt[0].split('/')[0].upper()+" = "+coelt+" found\n\n"
                 except TypeError:
                     returnString.append("nothing found\n")
             return returnString
-        
-        def inheritance_error_print(flattened_actual_dict):
-            ''' prints all the nodes that are due to the inheritence'''
-            returnString="\n"
-            for composite_key, value in d2.iteritems():
-                if value==ErrorString:
-                    returnString+=composite_key+"\n"
-            return returnString
-        
-        def build_inheritance(flattened_actual_dict):
-            ''' '''
-            Inheritant2Inherited={}
-            for key, value in flattened_actual_dict.iteritems():
-                if "*_inherits_from" in key:
-                    Inheritant2Inherited[key.split('/')[0].lower()]=value.strip('@')
-            return Inheritant2Inherited
-        
-        def check_connexity(InhDict):
-            ''' in addition to checking that no loops are present, also checks that none of the classes is attached to the baseclass'''
-            
-            def reduce_inheritance_dictionnary(Inh_Dict):
-                while True:
-                    prevDict=Inh_Dict.copy()
-                    leaf_classes=set(Inh_Dict.keys()).difference(set(Inh_Dict.values()))
-                    for cls in leaf_classes:
-                        if Inh_Dict[cls]!="baseclass":
-                            del Inh_Dict[cls]
-                    if prevDict==Inh_Dict:
-                        break
-                for cls in ['node', 'adjacency', 'relation']:
-                    del Inh_Dict[cls]
-                return Inh_Dict
-            
-            Reduced_Class_Dict=reduce_inheritance_dictionnary(InhDict)
-            if len(Reduced_Class_Dict)==0:
-                return
-            Inerited2Inheritant={}
-            for key, value in Reduced_Class_Dict.iteritems():
-                if value not in Inerited2Inheritant.keys():
-                    Inerited2Inheritant[value]=[]
-                Inerited2Inheritant[value]=Inerited2Inheritant[value].append(key)
-            if "baseclass" in Inerited2Inheritant.keys():
-                errmsg="Non-base classes inherit from the baseclass: \n"+Inerited2Inheritant["baseclass"]
-                raise Exception(errmsg)
-            else: 
-                errmsg="Circular inheritance for the following objects: \n"+Inerited2Inheritant.keys().__str__()
-                raise Exception(errmsg)
-            
-            #TODO:feature, add verification of different inheritance loops
-                
-            
         
         ref_scheme=improved_read(schemefiles[0])
         d1,d2=(strict_lvl2_flatten(ref_scheme),strict_lvl2_flatten(scheme_dict))
@@ -146,28 +105,104 @@ def parse_scheme(path_to_scheme,schemeStorageObject=""):
         if ErrorString in d2.values():
             errstr="A class that inherits from no-one has been found. He feels lonely. Please correct this for: "+inheritance_error_print(d2)
             raise Exception(errstr)
-        Inheritant2Inherited = build_inheritance(d2)
-        check_connexity(Inheritant2Inherited)
+        return d2
+
+    def check_connexity(flattened_dict):
+        ''' in addition to checking that no loops are present, also checks that none of the classes is attached to the baseclass'''
+
+        def inheritance_error_print(flattened_actual_dict):
+            ''' prints all the nodes that cause inheritence error'''
+            returnString="\n"
+            for composite_key, value in flattened_actual_dict.iteritems():
+                if value==ErrorString:
+                    returnString+=composite_key+"\n"
+            return returnString
         
-        # TODO: check that the inheritence actually has a tree-structure
-        # implementation: dict of dicts?, then intersection of keys and values, iterate until no nodes remain
-        # Compare the both sets to check that no nodes are suspended in the void.
-        # inheritant : inerited => all the keys that are not in values
-        # Single inheritance Only 
-        
-    def complete(scheme_dict):
-        pass
+        def reduce_inheritance_dictionnary(arg_Inh_Dict):
+            Inh_Dict=arg_Inh_Dict.copy()
+            while True:
+                prevDict=Inh_Dict.copy()
+                leaf_classes=set(Inh_Dict.keys()).difference(set(Inh_Dict.values()))
+                for cls in leaf_classes:
+                    if Inh_Dict[cls]!="baseclass":
+                        del Inh_Dict[cls]
+                if prevDict==Inh_Dict:
+                    break
+            return Inh_Dict
     
+        def build_inheritance(flattened_actual_dict):
+            ''' '''
+            Inheritant2Inherited={}
+            for key, value in flattened_actual_dict.iteritems():
+                if "*_inherits_from" in key:
+                    Inheritant2Inherited[key.split('/')[0].lower()]=value.strip('@')
+            for cls in baseclasses:
+                del Inheritant2Inherited[cls]
+            return Inheritant2Inherited 
+        
+        InhDict=build_inheritance(flattened_dict)
+        Reduced_Class_Dict=reduce_inheritance_dictionnary(InhDict)
+        if len(Reduced_Class_Dict)==0:
+            return InhDict
+        Inerited2Inheritant=invert_inheritence(Reduced_Class_Dict)
+        if "baseclass" in Inerited2Inheritant.keys():
+            errmsg="Non-base classes inherit from the baseclass: \n"+Inerited2Inheritant["baseclass"]
+            raise Exception(errmsg)
+        else: 
+            errmsg="Circular inheritance for the following objects: \n"+Inerited2Inheritant.keys().__str__()
+            raise Exception(errmsg)
+        #TODO:feature, add verification of different inheritance loops  
+   
+    def inflate_classes(scheme_dict,Inheritant2Inherited):
+        
+        def copy_with_proper_overrides(arg_raw_class,arg_inflated_father_class):
+            # fine-grained override section
+            raw_class=arg_raw_class.copy()
+            inflated_father_class=arg_inflated_father_class.copy()
+            raw_keyset=set(raw_class.keys())
+            father_keyset=set(inflated_father_class.keys())
+            interset=raw_keyset.intersection(father_keyset)
+            for key in interset:
+                if key=='*_class_type' and inflated_father_class[key]!=raw_class[key]:
+                    override_msg='Overriding a different type declaration:\n\n '
+                    override_msg+=raw_class['*_class_name']+' is declared as '+raw_class[key]
+                    override_msg+=',\n\n but inherited from '+inflated_father_class['*_class_name']+'which is of class'+inflated_father_class['key']
+                    warnings.warn(override_msg)
+                    del raw_class[key]
+                else:
+                    del inflated_father_class[key]
+            inflated_father_class.update(raw_class)
+            return inflated_father_class
+            
+        def recursive_cls_inflate(inherited_cls_dict,Reverse_Inh_Dict,collection_dict,raw_scheme):
+            ''' inflates recursively'''
+            # Stop recursion
+            if inherited_cls_dict not in Reverse_Inh_Dict.keys():
+                return collection_dict
+            else:
+                for cls in Reverse_Inh_Dict[inherited_cls_dict]:
+                    raw_scheme[cls]['*_class_name']=cls
+                    del raw_scheme[cls]['*_inherits_from']
+                    collection_dict[cls]=copy_with_proper_overrides(raw_scheme[cls], collection_dict[inherited_cls_dict])
+                    collection_dict=recursive_cls_inflate(cls, Reverse_Inh_Dict, collection_dict, raw_scheme)
+                return collection_dict
+        
+        ReverseInheritence=invert_inheritence(Inheritant2Inherited)
+        collection_dict={}
+        for cls in baseclasses:
+            scheme_dict[cls]['*_class_name']=cls
+            del scheme_dict[cls]['*_inherits_from']
+            collection_dict[cls]=scheme_dict[cls]
+            recursive_cls_inflate(cls, ReverseInheritence,  collection_dict, scheme_dict)
+        
+        return collection_dict, ReverseInheritence
+
     def process():
         scheme_dict=improved_read(path_to_scheme)
-        # TODO : inflate inheritant2inherited her and split min config and connexity verification in 2; then re-split the connexity verification into smaller caseclasses
-        check_config(scheme_dict)
-        # TODO: Inflate the class names, types and features => use the accumulation on the baseclasses method and inheritant2inherited verification
-        # TODO: Set computable categories in the neo4j_Scheme instance
-        
+        flat_dict = check_min_config(scheme_dict)
+        Inheritant2Inherited=check_connexity(flat_dict)
+        return inflate_classes(scheme_dict,Inheritant2Inherited)
 
-        return scheme_dict
-    
     return process()
 
 
