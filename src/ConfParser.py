@@ -8,6 +8,7 @@ performs configfiles reading and writing
 from __future__ import print_function
 import ConfigParser
 import os
+from pprint import PrettyPrinter
 
 rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../configs/'))
 shortnames=['servers','options']
@@ -61,7 +62,13 @@ def parse_configs():
         rfs=cfg.read(path)
         if rfs==[]:
             raise IOError('cannot load '+path)
-        return cfg
+        MainDict={}
+        for section in cfg.sections():
+            section_name="_".join([elt.lower() for elt in section.split('_')])
+            MainDict[section_name]={}
+            for option in cfg.options(section):
+                MainDict[section_name][option]=cfg.get(section, option).lower()
+        return MainDict
     
     return improved_read(configsfiles[0]), improved_read(configsfiles[1])
 
@@ -70,4 +77,5 @@ if __name__ == "__main__":
     if not os.path.exists(rootdir):
         os.makedirs(rootdir)
     generate_configs()
-    parse_configs()
+    pp=PrettyPrinter(indent=4)
+    pp.pprint(parse_configs())

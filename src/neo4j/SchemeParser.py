@@ -10,17 +10,15 @@ import os
 from pprint import PrettyPrinter
 from itertools import compress
 import warnings
-# import string
 
 rootdir=os.path.abspath(os.path.join(os.path.dirname(__file__),'../schemes/'))
 shortnames=['MainScheme','NoteScheme']
 schemefiles=[rootdir+'/'+name+'.ini' for name in shortnames ]
 ErrorString="<broken inheritence!>"
-# Additional levels of restriction, we'll leave them out for now
 baseclasses=['node', 'adjacency', 'relation']
+# Additional levels of restriction, we'll leave them out for now
 allowed_container_types=["_String","_Float","_Int"]
 allowed_class_types=["_Index","_Node","_Relation"]
-
 
 def generate_scheme():
     '''
@@ -164,9 +162,9 @@ def parse_scheme(path_to_scheme,schemeStorageObject=""):
             interset=raw_keyset.intersection(father_keyset)
             for key in interset:
                 if key=='*_class_type' and inflated_father_class[key]!=raw_class[key]:
-                    override_msg='Overriding a different type declaration:\n\n '
-                    override_msg+=raw_class['*_class_name']+' is declared as '+raw_class[key]
-                    override_msg+=',\n\n but inherited from '+inflated_father_class['*_class_name']+'which is of class'+inflated_father_class['key']
+                    override_msg='Overriding a different type declaration:\n '
+                    override_msg+=arg_raw_class['*_class_name']+' is declared as '+raw_class[key]
+                    override_msg+=',\n but inherited from '+arg_inflated_father_class['*_class_name']+' which is of class '+inflated_father_class[key]
                     warnings.warn(override_msg)
                     del raw_class[key]
                 else:
@@ -203,8 +201,8 @@ def parse_scheme(path_to_scheme,schemeStorageObject=""):
         Inheritant2Inherited=check_connexity(flat_dict)
         return inflate_classes(scheme_dict,Inheritant2Inherited)
 
-    return process()
-
+    # TODO: Edit to actually get the inheritence tree for adjacency-restricted operations
+    return process()[0]
 
 if __name__ == "__main__":
     if not os.path.exists(rootdir):

@@ -6,25 +6,16 @@ Checks if all the relevant information is in the ConfigParser-defined files
 import unittest
 import src.ConfParser as cfgPrs
 import os
+from pprint import PrettyPrinter
 
 class ConfigsParser_TestSuite(unittest.TestCase):
-
-    @staticmethod
-    def pprint(confparserobj):
-        for sec in confparserobj.sections():
-            print(sec)
-            for key in confparserobj.options(sec):
-                print('\t'+str(key)+'\t:\t'+str(confparserobj.get(sec,key)))
 
     def test_Configs_Parser(self):
         print('Testing the contents of the config .ini files')
         self.assertTrue(os.path.exists(cfgPrs.configsfiles[0]))
         self.assertTrue(os.path.exists(cfgPrs.configsfiles[0]))
-        cfg1, cfg2 = cfgPrs.parse_configs()
-        self.pprint(cfg1)
-        print("<================>")
-        self.pprint(cfg2)
-        print("- Success!")
+        pp=PrettyPrinter(indent=4)
+        pp.pprint(cfgPrs.parse_configs())
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
